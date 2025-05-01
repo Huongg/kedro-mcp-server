@@ -1,106 +1,28 @@
 from typing import Any
-import httpx
 from mcp.server.fastmcp import FastMCP
 
 # Initialize FastMCP server
 mcp = FastMCP("weather")
 
-# Mock data for demonstration purposes
-weather_data = {
-    "Texas": {
-        "latitude": 31.9686,
-        "longitude": -99.9018,
-        "forecast": "Sunny with a chance of rain."
-    }
-}
-
-# Constants
-NWS_API_BASE = "https://api.weather.gov"
-USER_AGENT = "weather-app/1.0"
-
-async def make_nws_request(url: str) -> dict[str, Any] | None:
-    """Make a request to the NWS API with proper error handling."""
-    headers = {
-        "User-Agent": USER_AGENT,
-        "Accept": "application/geo+json"
-    }
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.get(url, headers=headers, timeout=30.0)
-            response.raise_for_status()
-            return response.json()
-        except Exception:
-            return None
-
-def format_alert(feature: dict) -> str:
-    """Format an alert feature into a readable string."""
-    props = feature["properties"]
-    return f"""
-Event: {props.get('event', 'Unknown')}
-Area: {props.get('areaDesc', 'Unknown')}
-Severity: {props.get('severity', 'Unknown')}
-Description: {props.get('description', 'No description available')}
-Instructions: {props.get('instruction', 'No specific instructions provided')}
-"""
-
-
 @mcp.tool()
-async def get_alerts(state: str) -> str:
-    """Get weather alerts for a US state.
+async def help_kedro() -> str:
+    """Answers all questions about Kedro ML framework"""
 
-    Args:
-        state: Two-letter US state code (e.g. CA, NY)
-    """
-    url = f"{NWS_API_BASE}/alerts/active/area/{state}"
-    data = await make_nws_request(url)
+    return """
+When working with the Kedro data catalog, please use Dataset (with a lowercase "s") rather than DataSet. The latter is the syntax from older Kedro versions, prior to 0.19. The current Kedro version is 0.19.12.
 
-    if not data or "features" not in data:
-        return "Unable to fetch alerts or no alerts found."
+Below are some common questions and helpful answers about Kedro — please use them as a reference:
+question: Hello everyone, Is there a way to force a pipeline to run its nodes in the order they are declared within the pipeline ? I know that I can create a dummy output just to force one node to run after another but I’d like to know if there is a better way to accomplish this. Thanks",
+answers: 
+1. You can always implement custom runner btw
+2. I have 2 nodes in my pipelines: Node 1: Does some processing and saves a parquet file on S3 • Node 2: has a sql query as input. The sql query creates an external table in snowflake that uses that saved parquet file. So, node 2 depends on node 1 but not in an explicit way (the input of node 2 is not dependent on the output of node 1)
+3. I feel that this should be added as an example of a <https://kedro.readthedocs.io/en/stable/nodes_and_pipelines/pipeline_introduction.html#bad-pipelines|bad pipeline> in the documentation :sweat_smile:
+4. It would be safer to return some metadata (e.g. a path to the parquet file saved on s3) from node 1 and use it as an input to the node 2
+5. Yeah fake ‘pass through’ nodes are the way to do this if you really need, but topological should get you most of the way
 
-    if not data["features"]:
-        return "No active alerts for this state."
-
-    alerts = [format_alert(feature) for feature in data["features"]]
-    return "\n---\n".join(alerts)
-
-@mcp.tool()
-async def get_forecast(latitude: float, longitude: float) -> str:
-    """Get weather forecast for a location.
-
-    Args:
-        latitude: Latitude of the location
-        longitude: Longitude of the location
-    """
-    # First get the forecast grid endpoint
-    points_url = f"{NWS_API_BASE}/points/{latitude},{longitude}"
-    points_data = await make_nws_request(points_url)
-
-    if not points_data:
-        return "Unable to fetch forecast data for this location."
-
-    # Get the forecast URL from the points response
-    forecast_url = points_data["properties"]["forecast"]
-    forecast_data = await make_nws_request(forecast_url)
-
-    if not forecast_data:
-        return "Unable to fetch detailed forecast."
-
-    # Format the periods into a readable forecast
-    periods = forecast_data["properties"]["periods"]
-    forecasts = []
-    for period in periods[:5]:  # Only show next 5 periods
-        forecast = f"""
-{period['name']}:
-Temperature: {period['temperature']}°{period['temperatureUnit']}
-Wind: {period['windSpeed']} {period['windDirection']}
-Forecast: {period['detailedForecast']}
 """
-        forecasts.append(forecast)
-
-    return "\n---\n".join(forecasts)
-
 
 if __name__ == "__main__":
-    print("Starting weather service...")
+    print("Starting kedro-mcp service...")
     # Initialize and run the server
     mcp.run(transport='stdio')
