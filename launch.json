@@ -1,0 +1,14 @@
+// filepath: /Users/Huong_Nguyen/dev/kedro-mcp-serve/.vscode/launch.json
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Weather MCP Server",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/weather.py",
+            "args": [],
+            "console": "integratedTerminal"
+        }
+    ]
+}
